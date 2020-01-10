@@ -1,0 +1,4 @@
+install.packages("skimr")
+install.packages("ggplot2")
+install.packages("dummies")
+install.packages("kableextra")

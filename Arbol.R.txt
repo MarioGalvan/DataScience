@@ -1,0 +1,57 @@
+"------------------------------------------------------------------------------------------------------------------------------
+                                                             PUNTO 5
+
+MODELO PREDICTIVO ARBOL DE DECISIONES
+------------------------------------------------------------------------------------------------------------------------------"
+datos<-read.csv("D:/Trabajos/Modelo_fugas/BASEFUGA_PREDICCION.csv", header = T, sep=";")
+datos$M_MOROSO<-NULL
+
+#NORMALIZAMOS LAS COLUMNAS NUMERICAS
+escalados<-scale(datos[,2:5])
+
+#CONVERTIMOS LA LISTA DE UN DATAFRAME
+df <- data.frame(matrix(unlist(escalados), nrow=2294, byrow=T),stringsAsFactors=FALSE)
+
+#AL NUEVO DATASET ESCALADOS LE AGREGAMOS LA VARIABLE OBJETIVO
+df$FUGA<-datos$FUGA
+
+#RENOMBRAMOS LAS VARIABLES
+names (df) = c("RENTA", "EDAD", "TOTAL_DEUDA", "MONTO", "FUGA")
+
+set.seed(101) # genera numeros aleatorios
+
+# Dividimos el fichero en 70% entreno y 30% validación 
+dividir <- sample(2, nrow(df), replace = TRUE, prob = c(0.7, 0.3))
+
+entrenamiento <- df[dividir == 1, ]
+prueba <- df[dividir == 2, ]
+
+#LIBRERÍA PARA UTILIZAR LA FUNCIÓN RPART DE ARBOLES DE DECISIONES
+install.packages("rpart")
+install.packages("rpart.plot")
+
+library(rpart)
+library(rpart.plot)
+
+#REALIZAMOS EL MODELO CON LOS DATOS DE ENTRENAMIENTO
+modelo_arbol<-rpart(entrenamiento$FUGA~., data = entrenamiento)
+modelo_arbol
+
+#GRAFICAMOS EL ARBOL
+prp(modelo_arbol, type = 4, cex=0.7,main ="Arbol de decisiones",faclen=0)
+
+#HALLAMOS LAS PREDICCIONES
+prediccion_1 <- predict(modelo_arbol, newdata = prueba, type = "class")
+
+#TABLA DE CONTIGENCIA ENTRE LOS DATOS DE PRUEBA Y LAS PREDICCIONES
+MC<-table(prueba$FUGA,prediccion_1)
+MC
+
+# calculamos el error
+acierto<-sum(diag(MC))/sum(MC)
+acierto
+
+#ERROR
+error <- 1-acierto
+
+

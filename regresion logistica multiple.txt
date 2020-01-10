@@ -1,0 +1,94 @@
+"------------------------------------------------------------------------------------------------------------------------------
+                                                             PUNTO 5
+
+MODELO PREDICTIVO REGRESION LOGISTICA MULTIPLE
+se predice una respuesta binaria en función de múltiples predictores, que pueden ser tanto continuos como categóricos.
+------------------------------------------------------------------------------------------------------------------------------"
+datos<-read.csv("D:/Trabajos/Modelo_fugas/BASEFUGA_PREDICCION.csv", header = T, sep=";")
+
+datos$GENERO<-NULL
+
+#GRAFICAMOS TODAS LAS VARIABLES PARA VER SI HAY CORRELACIÓN ENTRE ELLAS
+pairs(datos)
+
+#MIRAMOS EL VALOR DE LAS CORRELACIONES
+cor(datos[, -6])
+
+"Las correlaciones de la variable M_MOROSO son próximas a 0. 
+La única correlación destacada se da entre el TOTAL_DEUDA y la EDAD."
+
+"vemos que la varible TOTAL_DEUDA y EDAD tienen una correlación positiva con un valor de 0.09818246 "
+#GRAFIQUEMOS ESTAS 2 VARIABLES
+plot( datos$TOTAL_DEUDA,datos$EDAD)
+my_line<-abline(lm(datos$EDAD~datos$TOTAL_DEUDA), col="RED")
+
+#ELIMINAMOS LA VARIABLE M_MOROSO
+datos$M_MOROSO<-NULL
+
+# Modelo con todos los predictores, excluyendo “M_MOROSO”
+modelo.log.m <- glm(datos$FUGA ~ ., data = datos, family = binomial)
+summary(modelo.log.m)
+
+contrasts(datos$FUGA)
+
+"Los valores “Null deviance” y “Residual deviance” hacen referencia a los residuos del modelo nulo sin predictores
+y al modelo completo, respectivamente. Los grados de libertad se corresponden con nº obs – nº predictores"
+
+"Además del valor de las estimaciones de los coeficientes parciales de correlación del modelo, 
+conviene obtener sus correspondientes intervalos de confianza:"
+
+confint(object = modelo.log.m, level = 0.95)
+"Según el modelo resultante, el MONTO preaprobado por el cliente (MONTO) es el único 
+predictor estadísticamente significativo (β1 =0.00000016168, p-value = 0.00000000000000143).
+Su valor positivo indica que si el monto del crédito es alto, es más probable que se fuge. 
+Más concretamente, por cada unidad que se incrementa la variable MONTO, 
+se espera que el logaritmo de odds de la variable Direction se incremente en promedio 0.00000016168 unidades."
+
+"En este caso, aplicando la inversa del logaritmo natural para Lag 2 obtenemos los odds:
+  e^(0.00000016168)=1.00000016168
+
+Es decir, por cada unidad que se incrementa la variable MONTO, 
+los odds de que Direction sea “Up” se incrementan en promedio 1.00000016168% unidades. 
+No hay que confundir esto último con que la probabilidad aumente en un 1.00000016168%.
+
+Esto corresponde a una probabilidad de que el monto del crédito tenga un valor positivo de:
+p=e^(0.00000016168)/ (1 + e^(0.00000016168)) = 0.50000004042"
+
+#EVALUACIÓN DEL MODELO
+anova(modelo.log.m, test ='Chisq')
+"En este caso, el modelo con el predictor MONTO sí es significativo respecto al modelo nulo."
+
+"Es importante también analizar el porcentaje de predicciones correctas además de los falsos positivos y 
+falsos negativos que hace nuestro modelo para evaluar su potencial. Para este ejemplo utilizaremos un threshold de 0,5.
+Si la probabilidad predicha de que monto preaprobado es mayor de 0.5, la observación se asignará al nivel 1 (“FUGA”),
+y si es menor se asignará al nivel 0 (“NO FUGA”)."
+
+# Cálculo de la probabilidad predicha por el modelo con los datos de test
+prob.modelo <- predict(modelo.log.m, newdata = datos, type = "response")
+
+# Vector de elementos “NO FUGA”
+pred.modelo <- rep("NO FUGA", length(prob.modelo))
+
+# Sustitución de “NO FUGA” por “FUGA” si la p > 0.5
+pred.modelo[prob.modelo > 0.5] <- "FUGA"
+
+# Matriz de confusión
+matriz.confusion <- table(pred.modelo, datos$FUGA)
+matriz.confusion
+
+#INSTALAR UNA SOLA VEZ
+install.packages("vcd")
+
+library(vcd)
+mosaic(matriz.confusion, shade = T, colorize = T)
+
+#El porcentaje de predicciones correctas sobre los datos es:
+mean(pred.modelo == datos$FUGA)
+
+#Por tanto, el test error rate es 100–32.95= 67.05%
+
+#Además, para aquellas clientes que se fugan, el modelo clasifica correctamente el
+#374/(374+783) = 32,32% de las observaciones, lo cual implica un mal comportamiento de este.
+
+#mientras que para los clientes que no se fugan , el modelo acierta en un 382/(382+775) = 33,01% de las veces 
+

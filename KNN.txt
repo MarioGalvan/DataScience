@@ -1,0 +1,49 @@
+"------------------------------------------------------------------------------------------------------------------------------
+                                                             PUNTO 5
+
+MODELO PREDICTIVO K VECINOS MÁS CERCANOS
+------------------------------------------------------------------------------------------------------------------------------"
+datos<-read.csv("D:/Trabajos/Modelo_fugas/BASEFUGA_PREDICCION.csv", header = T, sep=";")
+datos$M_MOROSO<-NULL
+
+#NORMALIZAMOS LAS COLUMNAS NUMERICAS
+escalados<-scale(datos[,2:5])
+
+#CONVERTIMOS LA LISTA DE UN DATAFRAME
+df <- data.frame(matrix(unlist(escalados), nrow=2294, byrow=T),stringsAsFactors=FALSE)
+
+#AL NUEVO DATASET ESCALADOS LE AGREGAMOS LA VARIABLE OBJETIVO
+df$FUGA<-datos$FUGA
+
+#RENOMBRAMOS LAS VARIABLES
+names (df) = c("RENTA", "EDAD", "TOTAL_DEUDA", "MONTO", "FUGA")
+
+
+# Dividimos el fichero en 70% entreno y 30% validación  
+set.seed(1234)
+ind <- sample(2, nrow(df), replace=TRUE, prob=c(0.7, 0.3))
+entrenamiento<- df[ind==1,]
+prueba <- df[ind==2,]
+
+install.packages("kknn")
+
+"Construimos el modelo alimentandolo con los datos de entrenamiento, 
+se le indica el valor máximo de K que el modelo puede usar y él determina el óptimo"
+
+suppressWarnings(suppressMessages(library(kknn)))
+modelo <- train.kknn(entrenamiento$FUGA~ ., data = entrenamiento, kmax = 9)
+modelo
+
+library("class")
+
+# Aplicamos el algoritmo K-NN seleccionando 7 como k óptimo
+KnnTestPrediccion_k1 <- knn(entrenamiento[,1:4],prueba[,1:4], entrenamiento$FUGA , k = 7, prob = TRUE )
+
+#VISUALIZAMOS EN UNA MATRIZ DE CONFUSIÓN PARA CONOCER LA CALIDAD DE LAS POSIBLES PREDICCIONES
+table ( prueba$FUGA, KnnTestPrediccion_k1 )
+
+#Calculamos el % de aciertos para k=7
+sum(KnnTestPrediccion_k1 == prueba$FUGA)/ length(prueba$FUGA)*100
+
+"ESTA TÉCNICA NO ES LA QUE MEJOR PREDICCIÓN ARROJA, YA QUE SU PROBABILIDAD DE PREDICCIÓN ES DEL 49%, LO QUE IMPLICA
+LA NULA OBTENCIÓN DEL BENEFICIO QUE SE ESPERA, LO QUE IMPLICA BUSCAR UNA MEJOR TÉCNICA."
